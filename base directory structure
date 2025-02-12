@@ -1,0 +1,2 @@
+mkdir -p packages/advanced-agent/{src,docs,examples,tests}
+cd packages/advanced-agent
