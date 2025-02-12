@@ -1,0 +1,4 @@
+examples/
+├── basic-usage.ts
+├── financial-analysis.ts
+└── custom-visualization.ts
