@@ -1,0 +1,6 @@
+# packages/advanced-agent/.gitignore
+node_modules/
+dist/
+.env
+*.log
+coverage/
