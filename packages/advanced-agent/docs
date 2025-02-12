@@ -1,0 +1,5 @@
+docs/
+├── api.md                # Detailed API documentation
+├── examples.md           # Usage examples
+├── financial.md          # Financial analysis documentation
+└── visualization.md      # Visualization guide
