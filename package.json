@@ -13,3 +13,11 @@
     "@types/lodash": "^4.14.191"
   }
 }
+{
+  "dependencies": {
+    "events": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^16.0.0"
+  }
+}
