@@ -1,228 +1,163 @@
-// packages/advanced-agent/src/image-processor/types.ts
+import { ImageProcessor } from './base';
+import { generateProcessingMetrics } from '../utils/metrics';
 
-import { z } from 'zod';
-
-export const ImageTaskType = z.enum([
-  'object_detection',
-  'segmentation',
-  'classification',
-  'text_detection',
-  'face_detection',
-  'sentiment_analysis',
-  'custom'
-]);
-
-export const ImageTaskSchema = z.object({
-  id: z.string(),
-  type: ImageTaskType,
-  options: z.record(z.any()).optional(),
-  goal: z.string(),
-  priority: z.number().default(1)
-});
-
-export const ImageAnalysisSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  tasks: z.array(ImageTaskSchema),
-  imageData: z.string(),
-  options: z.object({
-    batchSize: z.number().optional(),
-    timeout: z.number().optional(),
-    priority: z.number().optional(),
-    customModels: z.array(z.string()).optional()
-  }).optional()
-});
-
-export type ImageTask = z.infer<typeof ImageTaskSchema>;
-export type ImageAnalysis = z.infer<typeof ImageAnalysisSchema> & {
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress: {
-    currentTask: number;
-    totalTasks: number;
-    startTime: number;
-    lastUpdate: number;
-  };
-  results: Array<{
-    taskId: string;
-    findings: Array<{
-      type: string;
-      content: string;
-      confidence: number;
-      bbox?: [number, number, number, number];
-      metadata?: Record<string, any>;
-    }>;
-    timestamp: number;
-  }>;
-};
-
-// packages/advanced-agent/src/image-processor/processors/base.ts
-
-export abstract class ImageProcessor {
-  abstract type: string;
-  abstract process(imageData: string, options?: Record<string, any>): Promise<any>;
-  abstract validateInput(imageData: string): Promise<boolean>;
-  
-  protected async preprocessImage(imageData: string) {
-    // Common preprocessing logic
-    return imageData;
-  }
-
-  protected validateResults(results: any) {
-    // Common validation logic
-    return results;
-  }
-}
-
-// packages/advanced-agent/src/image-processor/processors/object-detection.ts
-
-export class ObjectDetectionProcessor extends ImageProcessor {
-  type = 'object_detection';
+// Segmentation Processor
+export class SegmentationProcessor extends ImageProcessor {
+  type = 'segmentation';
 
   async process(imageData: string, options: Record<string, any> = {}) {
-    const preprocessed = await this.preprocessImage(imageData);
-    // Implement object detection logic
-    return {
-      objects: [],
-      confidence: []
-    };
-  }
-
-  async validateInput(imageData: string) {
-    // Validate image data
-    return true;
-  }
-}
-
-// packages/advanced-agent/src/image-processor/manager.ts
-
-export class ImageProcessingManager {
-  private processors: Map<string, ImageProcessor> = new Map();
-  private queue: ImageAnalysis[] = [];
-  private processing = false;
-
-  registerProcessor(processor: ImageProcessor) {
-    this.processors.set(processor.type, processor);
-  }
-
-  async scheduleAnalysis(analysis: ImageAnalysis) {
-    this.queue.push(analysis);
-    if (!this.processing) {
-      await this.processQueue();
+    const startTime = Date.now();
+    try {
+      const preprocessed = await this.preprocessImage(imageData);
+      
+      // Process segments using masks
+      const segments = await this.generateSegmentMasks(preprocessed, options);
+      
+      const metrics = generateProcessingMetrics(startTime, segments.length);
+      
+      return {
+        segments: segments.map(segment => ({
+          mask: segment.mask,
+          label: segment.label,
+          confidence: segment.confidence,
+          bbox: segment.bbox,
+          area: segment.area
+        })),
+        metrics
+      };
+    } catch (error) {
+      throw new Error(`Segmentation failed: ${error.message}`);
     }
   }
 
-  private async processQueue() {
-    this.processing = true;
-    
-    while (this.queue.length > 0) {
-      const analysis = this.queue.shift()!;
-      try {
-        await this.processAnalysis(analysis);
-      } catch (error) {
-        analysis.status = 'failed';
-        // Handle error
-      }
-    }
-    
-    this.processing = false;
-  }
-
-  private async processAnalysis(analysis: ImageAnalysis) {
-    analysis.status = 'processing';
-    analysis.progress.startTime = Date.now();
-
-    for (const task of analysis.tasks) {
-      const processor = this.processors.get(task.type);
-      if (!processor) {
-        throw new Error(`No processor found for task type: ${task.type}`);
-      }
-
-      const results = await processor.process(analysis.imageData, task.options);
-      analysis.results.push({
-        taskId: task.id,
-        findings: this.formatResults(results),
-        timestamp: Date.now()
-      });
-
-      analysis.progress.currentTask++;
-      analysis.progress.lastUpdate = Date.now();
-    }
-
-    analysis.status = 'completed';
-  }
-
-  private formatResults(results: any) {
-    // Format results into standard structure
+  private async generateSegmentMasks(imageData: string, options: any) {
+    // Implementation would connect to actual segmentation model
     return [];
   }
 }
 
-// packages/advanced-agent/src/image-processor/actions.ts
+// Text Detection Processor
+export class TextDetectionProcessor extends ImageProcessor {
+  type = 'text_detection';
 
-import { action, task } from '@daydreamsai/core/src/core/v1';
-import { ImageAnalysisSchema, ImageProcessingManager } from './manager';
-
-export const imageProcessingManager = new ImageProcessingManager();
-
-// Register default processors
-imageProcessingManager.registerProcessor(new ObjectDetectionProcessor());
-// Register other processors...
-
-export const startImageAnalysis = action({
-  name: 'start-image-analysis',
-  schema: ImageAnalysisSchema,
-  async handler(call, ctx, agent) {
-    const analysis: ImageAnalysis = {
-      ...call.data,
-      status: 'pending',
-      progress: {
-        currentTask: 0,
-        totalTasks: call.data.tasks.length,
-        startTime: Date.now(),
-        lastUpdate: Date.now()
-      },
-      results: []
-    };
-
-    await imageProcessingManager.scheduleAnalysis(analysis);
-
-    ctx.memory.results.push({
-      ref: 'action_result',
-      callId: call.id,
-      name: call.name,
-      data: { analysisId: analysis.id },
-      timestamp: Date.now(),
-      processed: false
-    });
-
-    return { analysisId: analysis.id };
+  async process(imageData: string, options: Record<string, any> = {}) {
+    const startTime = Date.now();
+    try {
+      const preprocessed = await this.preprocessImage(imageData);
+      
+      // Detect text regions and recognize content
+      const textRegions = await this.detectTextRegions(preprocessed);
+      const recognizedText = await this.recognizeText(textRegions);
+      
+      const metrics = generateProcessingMetrics(startTime, recognizedText.length);
+      
+      return {
+        texts: recognizedText.map(text => ({
+          content: text.content,
+          bbox: text.bbox,
+          confidence: text.confidence,
+          language: text.detectedLanguage,
+          orientation: text.orientation
+        })),
+        metrics
+      };
+    } catch (error) {
+      throw new Error(`Text detection failed: ${error.message}`);
+    }
   }
-});
 
-export const getAnalysisStatus = action({
-  name: 'get-image-analysis-status',
-  schema: z.object({
-    analysisId: z.string()
-  }),
-  async handler(call, ctx, agent) {
-    // Implement status check
-    return { status: 'pending' };
+  private async detectTextRegions(imageData: string) {
+    // Implementation would connect to OCR model
+    return [];
   }
-});
 
-export const cancelAnalysis = action({
-  name: 'cancel-image-analysis',
-  schema: z.object({
-    analysisId: z.string()
-  }),
-  async handler(call, ctx, agent) {
-    // Implement cancellation
-    return { cancelled: true };
+  private async recognizeText(regions: any[]) {
+    // Implementation would handle text recognition
+    return [];
   }
-});
+}
 
-export const imageActions = [
-  startImageAnalysis,
-  getAnalysisStatus,
-  cancelAnalysis
-];
+// Face Analysis Processor
+export class FaceAnalysisProcessor extends ImageProcessor {
+  type = 'face_analysis';
+
+  async process(imageData: string, options: Record<string, any> = {}) {
+    const startTime = Date.now();
+    try {
+      const preprocessed = await this.preprocessImage(imageData);
+      
+      // Detect and analyze faces
+      const detectedFaces = await this.detectFaces(preprocessed);
+      const analyzedFaces = await this.analyzeFaces(detectedFaces);
+      
+      const metrics = generateProcessingMetrics(startTime, analyzedFaces.length);
+      
+      return {
+        faces: analyzedFaces.map(face => ({
+          bbox: face.bbox,
+          landmarks: face.landmarks,
+          attributes: {
+            age: face.estimatedAge,
+            gender: face.gender,
+            emotion: face.dominantEmotion,
+            glasses: face.hasGlasses,
+            pose: face.headPose
+          },
+          confidence: face.confidence
+        })),
+        metrics
+      };
+    } catch (error) {
+      throw new Error(`Face analysis failed: ${error.message}`);
+    }
+  }
+
+  private async detectFaces(imageData: string) {
+    // Implementation would connect to face detection model
+    return [];
+  }
+
+  private async analyzeFaces(faces: any[]) {
+    // Implementation would handle face attribute analysis
+    return [];
+  }
+}
+
+// Priority Queue for Processing
+export class PriorityQueue<T> {
+  private items: Array<{ item: T; priority: number }> = [];
+
+  enqueue(item: T, priority: number) {
+    const queueItem = { item, priority };
+    const insertIndex = this.items.findIndex(i => i.priority > priority);
+    
+    if (insertIndex === -1) {
+      this.items.push(queueItem);
+    } else {
+      this.items.splice(insertIndex, 0, queueItem);
+    }
+  }
+
+  dequeue(): T | undefined {
+    return this.items.shift()?.item;
+  }
+
+  peek(): T | undefined {
+    return this.items[0]?.item;
+  }
+
+  get length() {
+    return this.items.length;
+  }
+
+  clear() {
+    this.items = [];
+  }
+}
+
+// Export all processors
+export const processors = {
+  segmentation: new SegmentationProcessor(),
+  textDetection: new TextDetectionProcessor(),
+  faceAnalysis: new FaceAnalysisProcessor()
+};
