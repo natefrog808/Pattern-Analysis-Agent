@@ -1,2 +1,19 @@
 mkdir -p packages/advanced-agent/{src,docs,examples,tests}
 cd packages/advanced-agent
+packages/advanced-agent/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── src/
+│   └── image-processor/
+│       ├── __tests__/
+│       │   └── setup.ts
+│       ├── security/
+│       │   └── index.ts
+│       ├── performance/
+│       │   └── index.ts
+│       ├── visualization/
+│       │   └── responsive.tsx
+│       └── ...
+├── ADVANCED_DOCS.md
+└── ...
