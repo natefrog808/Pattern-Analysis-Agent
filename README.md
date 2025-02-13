@@ -190,18 +190,228 @@ try {
 }
 ```
 
+# Advanced Image Processing System
+
+A sophisticated image processing system built as a modular, extensible framework with support for batch processing, real-time progress tracking, and various analysis types.
+
+## Features
+
+### Core Processing Capabilities
+- Object Detection
+- Image Segmentation
+- Text Detection
+- Face Analysis
+- Custom Processing Types
+
+### Advanced Features
+- Batch Processing
+- Priority-based Queue Management
+- Real-time Progress Tracking
+- Concurrent Processing
+- Error Recovery
+- Performance Metrics
+
+## Directory Structure
+```
+packages/advanced-agent/
+├── src/
+│   └── image-processor/
+│       ├── actions.ts              # Action definitions
+│       ├── processors/             # Processing implementations
+│       │   ├── index.ts           # Processor exports
+│       │   ├── base.ts            # Base processor class
+│       │   └── progress-tracker.ts # Progress tracking
+│       ├── visualization/          # Visualization components
+│       │   ├── components.tsx     # Main components
+│       │   ├── batch.tsx          # Batch progress components
+│       │   └── progress.tsx       # Progress components
+│       ├── utils/                  # Utilities
+│       │   ├── queue.ts          # Priority queue
+│       │   └── metrics.ts        # Processing metrics
+│       ├── manager.ts             # Processing manager
+│       └── types.ts               # Type definitions
+```
+
+## Installation
+
+```bash
+npm install advanced-image-processor
+```
+
+## Quick Start
+
+```typescript
+import { createImageProcessor, BatchProgress } from 'advanced-image-processor';
+
+// Create processor instance
+const processor = createImageProcessor({
+  maxConcurrent: 3,
+  enableAutoCleanup: true
+});
+
+// Process single image
+const result = await processor.processImage({
+  id: 'image-1',
+  imageData: 'base64-encoded-image',
+  tasks: [
+    {
+      type: 'object_detection',
+      options: {
+        confidence: 0.8
+      }
+    }
+  ]
+});
+
+// Process batch of images
+const batchResult = await processor.processBatch({
+  images: [/* array of images */],
+  options: {
+    maxConcurrent: 2,
+    onProgress: (progress: BatchProgress) => {
+      console.log(`Batch progress: ${progress.currentProgress}%`);
+    }
+  }
+});
+```
+
+## Components
+
+### Processing Manager
+The core component handling all processing operations:
+
+```typescript
+const manager = new ImageProcessingManager({
+  maxConcurrent: 3
+});
+
+await manager.scheduleAnalysis(analysis, {
+  priority: 1,
+  timeout: 30000
+});
+```
+
+### Progress Tracking
+Real-time progress tracking with events:
+
+```typescript
+const tracker = new ProgressTracker({
+  updateFrequency: 1000,
+  enableAutoCleanup: true
+});
+
+tracker.onProgress('image-1', (progress) => {
+  console.log(`Progress: ${progress.percentage}%`);
+});
+```
+
+### Visualization Components
+React components for displaying progress and results:
+
+```typescript
+import { 
+  AnalysisResultVisualization, 
+  BatchProgress 
+} from './visualization';
+
+// Display analysis results
+<AnalysisResultVisualization
+  results={results}
+  imageData={imageData}
+/>
+
+// Display batch progress
+<BatchProgress
+  analyses={analyses}
+  batchId={batchId}
+  onCancel={() => cancelBatch(batchId)}
+/>
+```
+
+## Processors
+
+### Base Processor
+All processors extend the base processor class:
+
+```typescript
+abstract class ImageProcessor {
+  abstract type: string;
+  abstract process(imageData: string, options?: any): Promise<any>;
+  abstract validateInput(imageData: string): Promise<boolean>;
+}
+```
+
+### Available Processors
+- `SegmentationProcessor`: Image segmentation
+- `TextDetectionProcessor`: Text detection and OCR
+- `FaceAnalysisProcessor`: Face detection and analysis
+
+## Types and Schemas
+
+### Core Types
+```typescript
+type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+
+interface ImageAnalysis {
+  id: string;
+  name: string;
+  imageData: string;
+  tasks: ImageTask[];
+  status: ProcessingStatus;
+  progress: {
+    currentStep: number;
+    totalSteps: number;
+    startTime: number;
+    lastUpdate: number;
+  };
+}
+```
+
+### Task Types
+```typescript
+const ImageTaskType = z.enum([
+  'object_detection',
+  'segmentation',
+  'classification',
+  'text_detection',
+  'face_detection'
+]);
+```
+
+## Error Handling
+
+The system includes comprehensive error handling:
+```typescript
+class ProcessingError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public context?: Record<string, any>
+  ) {
+    super(message);
+    this.name = 'ProcessingError';
+  }
+}
+```
+
+## Performance Considerations
+
+- Uses LRU cache for frequent operations
+- Implements priority-based queuing
+- Supports concurrent processing
+- Includes performance metrics tracking
+- Automatic resource cleanup
+
 ## Contributing
 
-Contributions are welcome! Please read our contributing guidelines and submit pull requests to our GitHub repository.
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/my-feature`
+3. Commit your changes: `git commit -am 'Add some feature'`
+4. Push to the branch: `git push origin feature/my-feature`
+5. Submit a pull request
 
 ## License
 
 MIT License - see LICENSE for details.
-
-## Future Enhancements
-
-- ARIMA and SARIMA models for advanced forecasting
-- Deep learning integration for pattern recognition
-- Real-time data processing capabilities
 - Additional domain-specific analyzers
 - Enhanced visualization options
